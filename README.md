@@ -4,10 +4,9 @@ Web application per la compilazione intelligente del **Registro dei Rischi** sec
 
 ---
 
-## Accesso Online (per colleghi)
+## Accesso Online
 
-### URL pubblico
-👉 **https://herm-compiler.vercel.app**
+👉 **https://herm-risk-compiler.onrender.com**
 
 Aprire il link nel browser. Nessuna installazione necessaria.
 
@@ -16,32 +15,8 @@ Aprire il link nel browser. Nessuna installazione necessaria.
 - ✅ Analisi AI per estrarre scenari di rischio HERM
 - ✅ Registro rischi interattivo con filtro e approvazione
 - ✅ Dettaglio scenario con cause, conseguenze, metriche
+- ✅ Export Excel MO 3330 con formule originali
 - ✅ Export JSON, CSV, Markdown
-- ⚠️ Export Excel MO 3330: richiede il server locale (vedi sotto)
-
-### Per l'export Excel
-L'export Excel con formule originali del template MO 3330 richiede il server Python locale (openpyxl). Se serve l'export Excel:
-
-1. Apri il Terminale
-2. Esegui:
-   ```bash
-   cd "/Users/prova/Desktop/Risck Herm2026/herm-compiler"
-   pip install openpyxl flask
-   python3 server.py
-   ```
-3. Apri **http://localhost:8080**
-4. Usa l'app normalmente — l'export Excel funzionerà
-
----
-
-## Avvio Server Locale (per sviluppo)
-
-```bash
-cd "/Users/prova/Desktop/Risck Herm2026/herm-compiler"
-pip install openpyxl flask
-python3 server.py
-```
-Poi apri: **http://localhost:8080**
 
 ---
 
@@ -57,6 +32,17 @@ Poi apri: **http://localhost:8080**
 
 ## Repository GitHub
 https://github.com/Amaradona-max/herm-risk-compiler
+
+---
+
+## Avvio Server Locale (sviluppo)
+
+```bash
+cd herm-compiler
+pip install -r requirements.txt
+python3 server.py
+```
+Poi apri: **http://localhost:8080**
 
 ---
 
