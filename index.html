@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HERM Risk Register Compiler — ASST della Brianza</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --herm-purple:#534AB7;--herm-purple-dark:#3C3489;--herm-purple-light:#EEEDFE;--herm-purple-mid:#CECBF6;
+  --green-bg:#EAF3DE;--green-text:#27500A;--green-border:#C0DD97;
+  --amber-bg:#FAEEDA;--amber-text:#633806;--amber-border:#FAC775;
+  --red-bg:#FCEBEB;--red-text:#791F1F;--red-border:#F7C1C1;
+  --teal-bg:#E1F5EE;--teal-text:#085041;
+  --blue-bg:#E6F1FB;--blue-text:#0C447C;--blue-border:#B5D4F4;
+  --surface:#ffffff;--surface2:#f8f7f4;--surface3:#f2f0ec;
+  --border:#e8e5de;--border2:#d8d4cc;
+  --text:#1a1917;--text2:#6b6760;--text3:#9e9b95;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--surface2);color:var(--text);min-height:100vh;}
+
+/* NAV */
+nav{background:var(--herm-purple);color:#fff;display:flex;align-items:center;padding:0 20px;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+nav .brand{font-weight:700;font-size:16px;margin-right:24px;white-space:nowrap;}
+nav .tabs{display:flex;gap:2px;overflow-x:auto;}
+nav .tabs button{background:transparent;border:none;color:rgba(255,255,255,.7);padding:8px 14px;font-size:13px;cursor:pointer;border-radius:6px 6px 0 0;white-space:nowrap;transition:all .15s;}
+nav .tabs button:hover{background:rgba(255,255,255,.15);color:#fff;}
+nav .tabs button.active{background:var(--surface);color:var(--herm-purple);font-weight:600;}
+
+/* PAGES */
+.page{display:none;max-width:1200px;margin:20px auto;padding:0 20px;}
+.page.active{display:block;}
+h2{font-size:22px;margin-bottom:16px;color:var(--herm-purple-dark);}
+h3{font-size:16px;margin-bottom:10px;color:var(--text2);}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+
+/* BUTTONS */
+.btn{padding:8px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--herm-purple);color:#fff;}.btn-primary:hover{background:var(--herm-purple-dark);}
+.btn-success{background:#059669;color:#fff;}.btn-success:hover{background:#047857;}
+.btn-danger{background:#dc2626;color:#fff;}.btn-danger:hover{background:#b91c1c;}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text2);}.btn-outline:hover{background:var(--surface3);}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* INPUTS */
+input[type=text],input[type=url],textarea,select{border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:14px;width:100%;font-family:inherit;}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--herm-purple);box-shadow:0 0 0 3px var(--herm-purple-light);}
+textarea{resize:vertical;min-height:80px;}
+label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px;}
+
+/* DROPZONE */
+.dropzone{border:2px dashed var(--border2);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);}
+.dropzone.dragover{border-color:var(--herm-purple);background:var(--herm-purple-light);}
+.dropzone p{color:var(--text2);font-size:14px;}
+.dropzone .hint{font-size:12px;color:var(--text3);margin-top:6px;}
+
+/* FILE LIST */
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);}
+.file-item .info{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.file-item .name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.file-item .meta{font-size:11px;color:var(--text3);}
+.role-select{padding:4px 8px;font-size:12px;border-radius:6px;border:1px solid var(--border2);}
+.file-item .remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:4px;}
+.file-item .remove:hover{color:#dc2626;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--herm-purple);color:#fff;padding:10px 12px;text-align:left;font-size:12px;white-space:nowrap;position:sticky;top:0;}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+tr:hover td{background:var(--herm-purple-light);}
+.rpn-low{background:var(--green-bg);color:var(--green-text);font-weight:700;padding:3px 8px;border-radius:4px;}
+.rpn-mid{background:var(--amber-bg);color:var(--amber-text);font-weight:700;padding:3px 8px;border-radius:4px;}
+.rpn-high{background:var(--red-bg);color:var(--red-text);font-weight:700;padding:3px 8px;border-radius:4px;}
+.status-draft{background:var(--amber-bg);color:var(--amber-text);padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.status-approved{background:var(--green-bg);color:var(--green-text);padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+
+/* BADGE */
+.badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin:2px;}
+.badge-purple{background:var(--herm-purple-light);color:var(--herm-purple);}
+.badge-teal{background:var(--teal-bg);color:var(--teal-text);}
+.badge-amber{background:var(--amber-bg);color:var(--amber-text);}
+.badge-red{background:var(--red-bg);color:var(--red-text);}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.metric{text-align:center;padding:16px;background:var(--surface2);border-radius:8px;}
+.metric .value{font-size:28px;font-weight:700;color:var(--herm-purple);}
+.metric .label{font-size:11px;color:var(--text3);margin-top:4px;}
+
+/* LOG */
+.log-area{background:#1a1917;color:#a3e635;font-family:'SF Mono',Monaco,monospace;font-size:12px;padding:12px;border-radius:8px;max-height:200px;overflow-y:auto;white-space:pre-wrap;}
+
+/* CHECKLIST */
+.check{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.check:last-child{border-bottom:none;}
+.check .icon{font-size:18px;}
+.check .label{font-size:13px;}
+.check .required{font-size:10px;color:var(--text3);}
+
+/* DETAIL NAV */
+.detail-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.detail-nav .nav-btns{display:flex;gap:8px;}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .grid2,.grid3,.grid6{grid-template-columns:1fr;}
+  nav .brand{font-size:14px;margin-right:12px;}
+  nav .tabs button{padding:6px 10px;font-size:12px;}
+}
+
+/* LOADING */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner-dark{border-color:rgba(0,0,0,.1);border-top-color:var(--herm-purple);}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;z-index:999;animation:slideUp .3s;}
+.toast-success{background:#059669;}.toast-error{background:#dc2626;}.toast-info{background:var(--herm-purple);}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">HERM Compiler</div>
+  <div class="tabs">
+    <button class="active" onclick="showPage('upload')">Documenti</button>
+    <button onclick="showPage('analyze')">Analisi AI</button>
+    <button onclick="showPage('risks')">Registro</button>
+    <button onclick="showPage('detail')">Dettaglio</button>
+    <button onclick="showPage('export')">Export</button>
+  </div>
+</nav>
+
+<!-- ==================== PAGE: DOCUMENTI ==================== -->
+<div id="page-upload" class="page active">
+  <h2>Caricamento Documenti</h2>
+
+  <div class="card">
+    <h3>Worker URL (Cloudflare)</h3>
+    <label for="workerUrl">URL del tuo Cloudflare Worker proxy API</label>
+    <input type="url" id="workerUrl" placeholder="https://herm-compiler-api.TUONOME.workers.dev/api/analyze"
+           value="">
+    <p style="font-size:12px;color:var(--text3);margin-top:6px;">
+      L'URL viene salvato in localStorage. La API key Anthropic non viene mai esposta al browser.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Area PAC</h3>
+    <label for="pacArea">Seleziona l'area del Percorso Attuativo della Certificabilità</label>
+    <select id="pacArea" onchange="localStorage.setItem('herm_pac_area', this.value)">
+      <option value="A">Area A — Requisiti Generali</option>
+      <option value="B">Area B — Personale</option>
+      <option value="C">Area C — Acquisti</option>
+      <option value="D" selected>Area D — Immobilizzazioni</option>
+      <option value="E">Area E — Contabilità e Reporting Finanziario</option>
+    </select>
+    <p style="font-size:12px;color:var(--text3);margin-top:6px;">
+      Il titolo del Registro Rischi e il file Excel esportato saranno intestati all'area selezionata.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>Carica file (drag & drop o click)</h3>
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <p>Trascina qui i tuoi documenti oppure clicca per selezionare</p>
+      <p class="hint">PDF · DOCX · XLSX · XLSM · CSV · TXT · MD · PNG · JPG</p>
+      <input type="file" id="fileInput" multiple hidden
+             accept=".pdf,.docx,.xlsx,.xlsm,.xls,.csv,.txt,.md,.png,.jpg,.jpeg,.tiff">
+    </div>
+  </div>
+
+  <div class="card" id="fileListCard" style="display:none;">
+    <div class="card-header">
+      <h3>File caricati (<span id="fileCount">0</span>)</h3>
+      <button class="btn btn-outline btn-sm" onclick="clearFiles()">Svuota</button>
+    </div>
+    <div id="fileList"></div>
+    <div style="margin-top:12px;text-align:right;">
+      <button class="btn btn-primary" onclick="showPage('analyze')">Vai ad Analisi AI →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: ANALISI AI ==================== -->
+<div id="page-analyze" class="page">
+  <h2>Analisi AI</h2>
+
+  <div class="card">
+    <h3>Contesto aziendale (opzionale)</h3>
+    <textarea id="aiContext" placeholder="es. ASST sanitaria pubblica lombarda, area amministrativo-finanziaria...">ASST della Brianza — struttura sanitaria pubblica lombarda, area amministrativa e finanziaria</textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>Tassonomia HERM attiva</h3>
+    </div>
+    <div>
+      <span class="badge badge-purple">Rischio Clinico Sanitario</span>
+      <span class="badge badge-purple">Rischio Esterno</span>
+      <span class="badge badge-purple">Rischio Finanziario</span>
+      <span class="badge badge-purple">Rischio Strategico</span>
+      <span class="badge badge-purple">Rischio Operativo</span>
+      <span class="badge badge-purple">Rischio di Compliance</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="btn btn-primary" id="btnAnalyze" onclick="startAnalysis()">
+      Avvia Analisi AI
+    </button>
+  </div>
+
+  <div class="card" id="logCard" style="display:none;">
+    <h3>Log</h3>
+    <div class="log-area" id="logArea"></div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: REGISTRO ==================== -->
+<div id="page-risks" class="page">
+  <h2>Registro Rischi</h2>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <select id="filterCat" onchange="renderRisks()" style="width:auto;display:inline-block;">
+          <option value="">Tutte le categorie</option>
+          <option value="Rischio Clinico Sanitario">Rischio Clinico Sanitario</option>
+          <option value="Rischio Esterno">Rischio Esterno</option>
+          <option value="Rischio Finanziario">Rischio Finanziario</option>
+          <option value="Rischio Strategico">Rischio Strategico</option>
+          <option value="Rischio Operativo">Rischio Operativo</option>
+          <option value="Rischio di Compliance">Rischio di Compliance</option>
+        </select>
+        <span style="font-size:13px;color:var(--text2);margin-left:10px;">
+          <span id="riskCount">0</span> scenari
+        </span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="addManualRisk()">+ Aggiungi</button>
+        <button class="btn btn-outline btn-sm" onclick="approveAll()">✓ Approva Tutti</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>ID</th><th>Scenario</th><th>Cat. L1</th><th>Processo</th>
+            <th>Imp.</th><th>Prob.</th><th>RPN In.</th><th>RPN Res.</th>
+            <th>Conf.</th><th>Stato</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="risksBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: DETTAGLIO ==================== -->
+<div id="page-detail" class="page">
+  <div class="detail-nav">
+    <h2 id="detailTitle">Dettaglio Rischio</h2>
+    <div class="nav-btns">
+      <button class="btn btn-outline btn-sm" onclick="navRisk(-1)">‹ Prev</button>
+      <button class="btn btn-outline btn-sm" onclick="navRisk(1)">Next ›</button>
+    </div>
+  </div>
+  <div id="detailContent"></div>
+</div>
+
+<!-- ==================== PAGE: EXPORT ==================== -->
+<div id="page-export" class="page">
+  <h2>Export</h2>
+
+  <div class="card">
+    <h3>Checklist Validazione</h3>
+    <div id="checklistArea"></div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;">
+      <button class="btn btn-primary" onclick="exportXLSX()">Esporta Excel MO 3330 (.xlsx)</button>
+      <button class="btn btn-outline" onclick="exportJSON()">Esporta JSON</button>
+      <button class="btn btn-outline" onclick="exportCSV()">Esporta CSV</button>
+      <button class="btn btn-outline" onclick="exportMarkdown()">Esporta Report Markdown</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== STATO GLOBALE ====================
+let files = [];
+let risks = [];
+let selectedRisk = null;
+let selectedIdx = -1;
+const WORKER_URL_KEY = 'herm_worker_url';
+
+const roleLabels = {
+  herm_methodology: 'Metodologia HERM',
+  operational_notes: 'Note operative',
+  output_template: 'Template output',
+  other: 'Altro'
+};
+
+const SYSTEM_PROMPT = `Sei un esperto di Risk Management per enti sanitari pubblici italiani (ASL, ASST, AO),
+specializzato nel framework HERM di Regione Lombardia (Healthcare Enterprise Risk Management).
+
+TASSONOMIA HERM L1:
+- Rischio Clinico Sanitario
+- Rischio Esterno
+- Rischio Finanziario
+- Rischio Strategico
+- Rischio Operativo
+- Rischio di Compliance
+
+SCALE HERM:
+- Impatto: 2=Trascurabile, 3=Contenuto, 5=Significativo, 7=Rilevante, 10=Catastrofico/Estremo
+- Probabilità: 2=Improbabile(≤5%), 3=Poco probabile(5-10%), 4=Moderatamente probabile(10-25%),
+  5=Probabile(25-50%), 6=Molto probabile(≥50%)
+- Valutazione controlli: 4=Alto(rid.10%), 3=Medio-alto(25%), 2=Medio(50%), 1=Basso(75%), 0=Nullo(100%)
+
+FORMULE OBBLIGATORIE:
+- impatto_inerente = MAX(impatto_economico, impatto_reputazionale, impatto_salute_sicurezza,
+  impatto_compliance, impatto_gestionale_operativo, impatto_ambiente)
+- rpn_inerente = impatto_inerente × probabilita_inerente
+- fattore_riduzione: val4→0.1, val3→0.25, val2→0.5, val1→0.75, val0→1.0
+- impatto_residuo = impatto_inerente × fattore_riduzione_impatto
+- probabilita_residua = probabilita_inerente × fattore_riduzione_probabilita
+- rpn_residuo = impatto_residuo × probabilita_residua
+- rpn_to_be sempre ≤ rpn_residuo
+
+REGOLA CRITICA: Rispondi SOLO con un array JSON valido.
+Nessun testo prima o dopo. Nessun backtick. Nessun markdown.`;
+
+// ==================== NAVIGAZIONE ====================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav .tabs button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('nav .tabs button').forEach(b => {
+    if (b.textContent.toLowerCase().includes(
+      id === 'upload' ? 'documenti' :
+      id === 'analyze' ? 'analisi' :
+      id === 'risks' ? 'registro' :
+      id === 'detail' ? 'dettaglio' : 'export'
+    )) b.classList.add('active');
+  });
+  if (id === 'risks') renderRisks();
+  if (id === 'detail') renderDetail();
+  if (id === 'export') renderChecklist();
+}
+
+// ==================== TOAST ====================
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast toast-' + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ==================== LOG ====================
+function log(msg) {
+  const el = document.getElementById('logArea');
+  if (!el) return;
+  const card = document.getElementById('logCard');
+  card.style.display = 'block';
+  const time = new Date().toLocaleTimeString();
+  el.textContent += `[${time}] ${msg}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ==================== FILE UPLOAD ====================
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(filesList) {
+  for (let f of filesList) {
+    const ext = f.name.split('.').pop().toLowerCase();
+    const nm = f.name.toLowerCase();
+    let role = 'other';
+    if (nm.includes('herm') || nm.includes('formazione') || nm.includes('metodol')) {
+      role = 'herm_methodology';
+    } else if (nm.includes('pac') || nm.includes('procedure') || nm.includes('note') ||
+               nm.includes('verbale') || nm.includes('audit') || nm.includes('delibera') ||
+               nm.includes('linee') || nm.includes('guida')) {
+      role = 'operational_notes';
+    } else if (nm.includes('tabella') || nm.includes('registro') || nm.includes('template') ||
+               ext === 'xlsx' || ext === 'xls') {
+      role = 'output_template';
+    }
+    files.push({ id: Date.now() + Math.random(), name: f.name, size: f.size, type: ext, role });
+  }
+  renderFileList();
+  toast(files.length + ' file caricati', 'success');
+}
+
+function renderFileList() {
+  const card = document.getElementById('fileListCard');
+  const list = document.getElementById('fileList');
+  const count = document.getElementById('fileCount');
+  if (!files.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  count.textContent = files.length;
+  list.innerHTML = files.map(f => `
+    <div class="file-item">
+      <div class="info">
+        <span style="font-size:20px;">${f.type === 'pdf' ? '📄' : f.type.includes('xl') ? '📊' : f.type === 'docx' ? '📝' : '📎'}</span>
+        <div>
+          <div class="name">${f.name}</div>
+          <div class="meta">${formatSize(f.size)} · ${f.type.toUpperCase()}</div>
+        </div>
+      </div>
+      <select class="role-select" onchange="setRole(${f.id}, this.value)">
+        <option value="herm_methodology" ${f.role === 'herm_methodology' ? 'selected' : ''}>Metodologia HERM</option>
+        <option value="operational_notes" ${f.role === 'operational_notes' ? 'selected' : ''}>Note operative</option>
+        <option value="output_template" ${f.role === 'output_template' ? 'selected' : ''}>Template output</option>
+        <option value="other" ${f.role === 'other' ? 'selected' : ''}>Altro</option>
+      </select>
+      <button class="remove" onclick="removeFile(${f.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function formatSize(b) {
+  if (!b) return '0 B';
+  const u = ['B','KB','MB','GB'];
+  let i = 0; let s = b;
+  while (s >= 1024 && i < u.length - 1) { s /= 1024; i++; }
+  return s.toFixed(1) + ' ' + u[i];
+}
+
+function setRole(id, role) {
+  const f = files.find(x => x.id === id);
+  if (f) f.role = role;
+}
+
+function removeFile(id) {
+  files = files.filter(x => x.id !== id);
+  renderFileList();
+}
+
+function clearFiles() {
+  if (!confirm('Svuotare tutti i file caricati?')) return;
+  files = [];
+  renderFileList();
+}
+
+// ==================== ANALISI AI ====================
+async function startAnalysis() {
+  const workerUrl = document.getElementById('workerUrl').value.trim() || localStorage.getItem(WORKER_URL_KEY);
+  if (!workerUrl) {
+    toast('Inserisci l\'URL del Cloudflare Worker prima di avviare l\'analisi.', 'error');
+    return;
+  }
+  localStorage.setItem(WORKER_URL_KEY, workerUrl);
+  document.getElementById('workerUrl').value = workerUrl;
+
+  if (!files.length) {
+    toast('Carica almeno un file prima di avviare l\'analisi.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnAnalyze');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analisi in corso...';
+  log('Avvio analisi AI...');
+
+  try {
+    const herm = files.filter(f => f.role === 'herm_methodology').map(f => f.name).join(', ') || 'nessuno';
+    const ops = files.filter(f => f.role === 'operational_notes').map(f => f.name).join(', ') || 'nessuno';
+    const tmpl = files.filter(f => f.role === 'output_template').map(f => f.name).join(', ') || 'nessuno';
+    const ctx = document.getElementById('aiContext').value.trim();
+    const pacArea = document.getElementById('pacArea').value;
+    const areaNames = {
+      'A': 'Requisiti Generali', 'B': 'Personale', 'C': 'Acquisti',
+      'D': 'Immobilizzazioni', 'E': 'Contabilità e Reporting Finanziario'
+    };
+
+    const userMsg = `
+Documenti metodologia HERM: ${herm}
+Documenti operativi/PAC/note: ${ops}
+Template output: ${tmpl}
+Contesto aziendale: ${ctx || 'ASST sanitaria pubblica lombarda'}
+Area PAC: ${pacArea} — ${areaNames[pacArea]}
+
+Genera 6-8 scenari di rischio HERM realistici e dettagliati specifici per l'Area PAC ${pacArea} — ${areaNames[pacArea]}.
+Gli scenari devono essere coerenti con i documenti forniti e focalizzati sui rischi specifici di questa area del Percorso Attuativo della Certificabilità.
+
+Genera 6-8 scenari di rischio HERM realistici e dettagliati coerenti con i documenti forniti.
+Scenari tipici da includere: mancata approvazione procedure PAC, mancata trasmissione documentale
+(PEC/SCRIBA), checklist Requisiti Generali incompleta, errori contabilità/reporting verso Regione,
+sicurezza informatica sistemi gestionali, gestione terze parti e fornitori,
+fatturazione elettronica/SDI.
+
+Formato JSON richiesto per ogni scenario:
+[{
+  "id": "R001",
+  "scenario": "titolo breve",
+  "descrizione": "descrizione dettagliata",
+  "categoria_l1": "Rischio Finanziario",
+  "categoria_l2": "Contabilità e reporting finanziario",
+  "categoria_l3": "N.A.",
+  "processo": "BIL",
+  "direzione": "Direzione Economico-Finanziaria",
+  "risk_owner": "Responsabile Bilancio",
+  "cause": {
+    "processi": "...",
+    "persone": "...",
+    "fattori_esterni": "...",
+    "strumenti": "..."
+  },
+  "conseguenze": {
+    "economiche": "...",
+    "reputazionali": "...",
+    "compliance": "...",
+    "salute_sicurezza": null,
+    "gestionale_operativo": "...",
+    "ambiente": null
+  },
+  "impatto_economico": 5,
+  "impatto_reputazionale": 3,
+  "impatto_salute_sicurezza": 2,
+  "impatto_compliance": 7,
+  "impatto_gestionale_operativo": 5,
+  "impatto_ambiente": 2,
+  "impatto_inerente": 7,
+  "probabilita_inerente": 4,
+  "rpn_inerente": 28,
+  "controlli_correttivi": "...",
+  "valutazione_controlli_impatto": 2,
+  "valutazione_controlli_probabilita": 2,
+  "fattore_riduzione_impatto": 0.5,
+  "fattore_riduzione_probabilita": 0.5,
+  "controlli_preventivi": "...",
+  "impatto_residuo": 3.5,
+  "probabilita_residua": 2.0,
+  "rpn_residuo": 7.0,
+  "azioni_mitigazione": "...",
+  "rpn_to_be": 4.0,
+  "confidence_score": 0.8,
+  "status": "draft",
+  "fonti": ["nome file"],
+  "motivazione_impatto": "...",
+  "motivazione_probabilita": "...",
+  "flag_revisione": false
+}]
+`;
+
+    log('Invio richiesta al Worker...');
+    const resp = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMsg }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+
+    log('Risposta ricevuta, parsing JSON...');
+    const data = await resp.json();
+    const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+
+    let parsed;
+    // Pulisci markdown code blocks
+    let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+    // Estrai ogni oggetto { } individualmente usando depth tracking
+    parsed = [];
+    let depth = 0, objStart = -1, inStr = false, esc = false;
+    for (let i = 0; i < clean.length; i++) {
+      const ch = clean[i];
+      if (esc) { esc = false; continue; }
+      if (ch === '\\' && inStr) { esc = true; continue; }
+      if (ch === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (ch === '{') { if (depth === 0) objStart = i; depth++; }
+      if (ch === '}' && depth > 0) {
+        depth--;
+        if (depth === 0 && objStart !== -1) {
+          let chunk = clean.substring(objStart, i + 1);
+          // Fix: escapare newline dentro stringhe di questo chunk
+          let fixed = '', s = false, e = false;
+          for (let j = 0; j < chunk.length; j++) {
+            const c = chunk[j];
+            if (e) { fixed += c; e = false; continue; }
+            if (c === '\\') { fixed += c; e = true; continue; }
+            if (c === '"') { s = !s; fixed += c; continue; }
+            if (s && c === '\n') { fixed += '\\n'; continue; }
+            if (s && c === '\r') { continue; }
+            fixed += c;
+          }
+          fixed = fixed.replace(/,\s*([}\]])/g, '$1');
+          try {
+            parsed.push(JSON.parse(fixed));
+          } catch (e2) {
+            log('Obj skippato: ' + e2.message);
+          }
+          objStart = -1;
+        }
+      }
+    }
+    if (!parsed.length) throw new Error('Nessun scenario estratto dalla risposta AI.');
+
+    if (!Array.isArray(parsed)) throw new Error('La risposta AI non è un array.');
+
+    const startIdx = risks.length;
+    parsed.forEach((r, i) => {
+      r._idx = startIdx + i;
+      if (!r.fonti) r.fonti = files.map(f => f.name);
+    });
+    risks = [...risks, ...parsed];
+
+    log(`${parsed.length} scenari estratti con successo!`);
+    toast(parsed.length + ' scenari di rischio generati', 'success');
+
+  } catch (err) {
+    log('ERRORE: ' + err.message);
+    toast('Errore: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Avvia Analisi AI';
+  }
+}
+
+// ==================== REGISTRO RISCHI ====================
+function renderRisks() {
+  const tbody = document.getElementById('risksBody');
+  const filter = document.getElementById('filterCat').value;
+  const filtered = filter ? risks.filter(r => r.categoria_l1 === filter) : risks;
+  document.getElementById('riskCount').textContent = filtered.length;
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:40px;">Nessun rischio estratto. Carica documenti e avvia l\'analisi AI.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((r, i) => {
+    const rpnClass = (r.rpn_inerente || 0) > 24 ? 'rpn-high' : (r.rpn_inerente || 0) > 12 ? 'rpn-mid' : 'rpn-low';
+    const rpnResClass = (r.rpn_residuo || 0) > 24 ? 'rpn-high' : (r.rpn_residuo || 0) > 12 ? 'rpn-mid' : 'rpn-low';
+    return `<tr onclick="selectRisk(${r._idx})" style="cursor:pointer;">
+      <td>${i + 1}</td>
+      <td><strong>${r.id || ''}</strong></td>
+      <td>${r.scenario || ''}</td>
+      <td><span class="badge badge-purple">${r.categoria_l1 || ''}</span></td>
+      <td>${r.processo || ''}</td>
+      <td>${r.impatto_inerente || ''}</td>
+      <td>${r.probabilita_inerente || ''}</td>
+      <td><span class="${rpnClass}">${r.rpn_inerente || 0}</span></td>
+      <td><span class="${rpnResClass}">${(r.rpn_residuo || 0).toFixed(1)}</span></td>
+      <td>${r.confidence_score ? Math.round(r.confidence_score * 100) + '%' : '-'}</td>
+      <td><span class="${r.status === 'approved' ? 'status-approved' : 'status-draft'}">${r.status || 'draft'}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();toggleApprove(${r._idx})" title="Toggle approva">
+          ${r.status === 'approved' ? '✓' : '○'}
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function selectRisk(idx) {
+  selectedIdx = idx;
+  selectedRisk = risks[idx];
+  showPage('detail');
+}
+
+function toggleApprove(idx) {
+  risks[idx].status = risks[idx].status === 'approved' ? 'draft' : 'approved';
+  renderRisks();
+  toast('Stato aggiornato', 'info');
+}
+
+function approveAll() {
+  risks.forEach(r => r.status = 'approved');
+  renderRisks();
+  toast('Tutti gli scenari approvati', 'success');
+}
+
+function addManualRisk() {
+  const id = 'R' + String(risks.length + 1).padStart(3, '0');
+  risks.push({
+    id, scenario: 'Nuovo scenario', descrizione: '',
+    categoria_l1: 'Rischio Operativo', categoria_l2: '', categoria_l3: 'N.A.',
+    processo: '', direzione: '', risk_owner: '',
+    cause: { processi: '', persone: '', fattori_esterni: '', strumenti: '' },
+    conseguenze: { economiche: '', reputazionali: '', compliance: '', salute_sicurezza: null, gestionale_operativo: '', ambiente: null },
+    impatto_economico: 5, impatto_reputazionale: 3, impatto_salute_sicurezza: 2,
+    impatto_compliance: 5, impatto_gestionale_operativo: 5, impatto_ambiente: 2,
+    impatto_inerente: 5, probabilita_inerente: 4, rpn_inerente: 20,
+    controlli_correttivi: '', valutazione_controlli_impatto: 2, valutazione_controlli_probabilita: 2,
+    fattore_riduzione_impatto: 0.5, fattore_riduzione_probabilita: 0.5,
+    controlli_preventivi: '',
+    impatto_residuo: 2.5, probabilita_residua: 2.0, rpn_residuo: 5.0,
+    azioni_mitigazione: '', rpn_to_be: 3.0,
+    confidence_score: 1.0, status: 'draft', fonti: [],
+    motivazione_impatto: '', motivazione_probabilita: '', flag_revisione: false,
+    _idx: risks.length
+  });
+  renderRisks();
+  toast('Scenario aggiunto', 'info');
+}
+
+// ==================== DETTAGLIO ====================
+function renderDetail() {
+  const container = document.getElementById('detailContent');
+  const r = selectedRisk;
+  if (!r) {
+    container.innerHTML = '<div class="card"><p>Seleziona uno scenario dal Registro.</p></div>';
+    return;
+  }
+  document.getElementById('detailTitle').textContent = r.id + ' — ' + r.scenario;
+
+  const rpnClass = (r.rpn_inerente || 0) > 24 ? 'rpn-high' : (r.rpn_inerente || 0) > 12 ? 'rpn-mid' : 'rpn-low';
+
+  container.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <span class="badge badge-purple">${r.categoria_l1 || ''}</span>
+          <span class="badge badge-teal">${r.categoria_l2 || ''}</span>
+          ${r.categoria_l3 && r.categoria_l3 !== 'N.A.' ? '<span class="badge badge-amber">' + r.categoria_l3 + '</span>' : ''}
+          <span class="${r.status === 'approved' ? 'status-approved' : 'status-draft'}">${r.status || 'draft'}</span>
+          ${r.flag_revisione ? '<span class="badge badge-red">⚠ Revisione</span>' : ''}
+        </div>
+        <button class="btn btn-sm ${r.status === 'approved' ? 'btn-outline' : 'btn-success'}" onclick="toggleApprove(${r._idx});renderDetail();">
+          ${r.status === 'approved' ? 'Revoca Approvazione' : '✓ Approva'}
+        </button>
+      </div>
+      <p style="margin-top:8px;color:var(--text2);">${r.descrizione || ''}</p>
+    </div>
+
+    <div class="grid3">
+      <div class="card metric"><div class="value">${r.impatto_inerente || '-'}</div><div class="label">Impatto Inerente</div></div>
+      <div class="card metric"><div class="value">${r.probabilita_inerente || '-'}</div><div class="label">Probabilità Inerente</div></div>
+      <div class="card metric"><div class="value"><span class="${rpnClass}">${r.rpn_inerente || 0}</span></div><div class="label">RPN Inerente</div></div>
+    </div>
+
+    <div class="grid3">
+      <div class="card metric"><div class="value">${(r.impatto_residuo || 0).toFixed(1)}</div><div class="label">Impatto Residuo</div></div>
+      <div class="card metric"><div class="value">${(r.probabilita_residua || 0).toFixed(1)}</div><div class="label">Probabilità Residua</div></div>
+      <div class="card metric"><div class="value">${(r.rpn_residuo || 0).toFixed(1)}</div><div class="label">RPN Residuo</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Impatti per dimensione</h3>
+      <div class="grid6">
+        <div class="metric"><div class="value">${r.impatto_economico || 2}</div><div class="label">Economico</div></div>
+        <div class="metric"><div class="value">${r.impatto_reputazionale || 2}</div><div class="label">Reputazionale</div></div>
+        <div class="metric"><div class="value">${r.impatto_salute_sicurezza || 2}</div><div class="label">Salute/Sic.</div></div>
+        <div class="metric"><div class="value">${r.impatto_compliance || 2}</div><div class="label">Compliance</div></div>
+        <div class="metric"><div class="value">${r.impatto_gestionale_operativo || 2}</div><div class="label">Gestionale</div></div>
+        <div class="metric"><div class="value">${r.impatto_ambiente || 2}</div><div class="label">Ambiente</div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Controlli Correttivi (Impatto)</h3>
+        <p style="font-size:13px;">${r.controlli_correttivi || 'Nessuno'}</p>
+        <p style="margin-top:8px;"><strong>Valutazione:</strong> ${r.valutazione_controlli_impatto || '-'} → Fattore: ${r.fattore_riduzione_impatto || '-'}</p>
+      </div>
+      <div class="card">
+        <h3>Controlli Preventivi (Probabilità)</h3>
+        <p style="font-size:13px;">${r.controlli_preventivi || 'Nessuno'}</p>
+        <p style="margin-top:8px;"><strong>Valutazione:</strong> ${r.valutazione_controlli_probabilita || '-'} → Fattore: ${r.fattore_riduzione_probabilita || '-'}</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Cause</h3>
+      <div class="grid2">
+        <div><strong>Processi:</strong> ${r.cause?.processi || '-'}</div>
+        <div><strong>Persone:</strong> ${r.cause?.persone || '-'}</div>
+        <div><strong>Fattori esterni:</strong> ${r.cause?.fattori_esterni || '-'}</div>
+        <div><strong>Strumenti:</strong> ${r.cause?.strumenti || '-'}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Conseguenze</h3>
+      <div class="grid2">
+        <div><strong>Economiche:</strong> ${r.conseguenze?.economiche || '-'}</div>
+        <div><strong>Reputazionali:</strong> ${r.conseguenze?.reputazionali || '-'}</div>
+        <div><strong>Compliance:</strong> ${r.conseguenze?.compliance || '-'}</div>
+        <div><strong>Salute/Sicurezza:</strong> ${r.conseguenze?.salute_sicurezza || '-'}</div>
+        <div><strong>Gestionale:</strong> ${r.conseguenze?.gestionale_operativo || '-'}</div>
+        <div><strong>Ambiente:</strong> ${r.conseguenze?.ambiente || '-'}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Azioni di Mitigazione</h3>
+      <p style="font-size:13px;">${r.azioni_mitigazione || 'Nessuna azione definita'}</p>
+      <p style="margin-top:8px;"><strong>RPN To-Be:</strong> ${r.rpn_to_be || '-'}</p>
+    </div>
+
+    <div class="card">
+      <div class="grid3">
+        <div><strong>Processo:</strong> ${r.processo || '-'}</div>
+        <div><strong>Direzione:</strong> ${r.direzione || '-'}</div>
+        <div><strong>Risk Owner:</strong> ${r.risk_owner || '-'}</div>
+        <div><strong>Confidenza AI:</strong> ${r.confidence_score ? Math.round(r.confidence_score * 100) + '%' : '-'}</div>
+        <div><strong>Fonti:</strong> ${(r.fonti || []).join(', ') || '-'}</div>
+      </div>
+    </div>
+  `;
+}
+
+function navRisk(dir) {
+  if (risks.length === 0) return;
+  selectedIdx = (selectedIdx + dir + risks.length) % risks.length;
+  selectedRisk = risks[selectedIdx];
+  renderDetail();
+}
+
+// ==================== CHECKLIST EXPORT ====================
+function renderChecklist() {
+  const checks = [
+    { ok: risks.length > 0,
+      label: `Scenari presenti (${risks.length})`, required: true },
+    { ok: risks.every(r => r.categoria_l1 && r.categoria_l2),
+      label: 'Categorie HERM L1+L2 valorizzate per tutti', required: true },
+    { ok: risks.every(r => r.impatto_inerente && r.probabilita_inerente),
+      label: 'Impatto e probabilità inerente valorizzati', required: true },
+    { ok: risks.every(r => (r.rpn_inerente || 0) > 0),
+      label: 'RPN inerente calcolato per tutti', required: true },
+    { ok: risks.filter(r => r.status === 'approved').length === risks.length && risks.length > 0,
+      label: `Tutti approvati (${risks.filter(r=>r.status==='approved').length}/${risks.length})`,
+      required: false },
+    { ok: !risks.some(r => r.flag_revisione),
+      label: 'Nessun flag revisione manuale', required: false },
+    { ok: risks.every(r => (r.confidence_score || 0) >= 0.5),
+      label: 'Confidenza AI ≥ 50% su tutti gli scenari', required: false },
+  ];
+
+  document.getElementById('checklistArea').innerHTML = checks.map(c => `
+    <div class="check">
+      <span class="icon">${c.ok ? '✅' : (c.required ? '❌' : '⚠️')}</span>
+      <span class="label">${c.label}</span>
+      ${c.required ? '<span class="required">OBBLIGATORIO</span>' : '<span class="required">CONSIGLIATO</span>'}
+    </div>
+  `).join('');
+}
+
+// ==================== EXPORT XLSX (SheetJS) ====================
+function formatCause(c) {
+  if (!c || typeof c !== 'object') return c || '';
+  const parts = [];
+  if (c.processi) parts.push('Processi:\n' + c.processi);
+  if (c.persone) parts.push('Persone:\n' + c.persone);
+  if (c.fattori_esterni) parts.push('Fattori esterni:\n' + c.fattori_esterni);
+  if (c.strumenti) parts.push('Strumenti:\n' + c.strumenti);
+  return parts.join('\n\n');
+}
+
+function formatConsequence(c) {
+  if (!c || typeof c !== 'object') return c || '';
+  const parts = [];
+  if (c.economiche) parts.push('Economiche: ' + c.economiche);
+  if (c.reputazionali) parts.push("Danno d'immagine: " + c.reputazionali);
+  if (c.compliance) parts.push('Compliance normativa: ' + c.compliance);
+  if (c.salute_sicurezza) parts.push('Salute e sicurezza: ' + c.salute_sicurezza);
+  else parts.push('Salute e sicurezza: -');
+  if (c.gestionale_operativo) parts.push('Gestionale - Operativo: ' + c.gestionale_operativo);
+  if (c.ambiente) parts.push('Ambiente: ' + c.ambiente);
+  return parts.join('\n\n');
+}
+
+async function exportXLSX() {
+  if (!risks.length) { toast('Nessun rischio da esportare.', 'error'); return; }
+
+  const pacArea = document.getElementById('pacArea').value;
+  const areaNames = {
+    'A': 'Requisiti Generali', 'B': 'Personale', 'C': 'Acquisti',
+    'D': 'Immobilizzazioni', 'E': 'Contabilità e Reporting Finanziario'
+  };
+
+  toast('Generazione Excel con formule originali...', 'info');
+
+  try {
+    const resp = await fetch('/api/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        risks: risks.map(r => {
+          const o = { ...r };
+          delete o._idx;
+          return o;
+        }),
+        pacArea: pacArea
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    const blob = await resp.blob();
+    const areaFileNames = {
+      'A': 'Requisiti_Generali', 'B': 'Personale', 'C': 'Acquisti',
+      'D': 'Immobilizzazioni', 'E': 'Contabilità_e_Reporting'
+    };
+    const filename = `Risk_Register_PAC_Area_${pacArea}_${areaFileNames[pacArea]}.xlsx`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast(`${risks.length} scenari compilati per PAC Area ${pacArea} — ${areaNames[pacArea]}!`, 'success');
+  } catch (err) {
+    console.error(err);
+    toast('Errore export: ' + err.message, 'error');
+  }
+}
+
+// ==================== EXPORT JSON ====================
+function exportJSON() {
+  if (!risks.length) { toast('Nessun rischio da esportare.', 'error'); return; }
+  const out = risks.map(r => {
+    const o = { ...r };
+    delete o._idx;
+    return o;
+  });
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'HERM_Risk_Register.json';
+  a.click();
+  toast('JSON esportato!', 'success');
+}
+
+// ==================== EXPORT CSV ====================
+function exportCSV() {
+  if (!risks.length) { toast('Nessun rischio da esportare.', 'error'); return; }
+  const headers = ['ID','Scenario','Categoria L1','Categoria L2','Processo','Direzione','Risk Owner','Impatto Inerente','Probabilità Inerente','RPN Inerente','RPN Residuo','Stato','Confidenza'];
+  const rows = risks.map(r => [
+    r.id, r.scenario, r.categoria_l1, r.categoria_l2, r.processo, r.direzione, r.risk_owner,
+    r.impatto_inerente, r.probabilita_inerente, r.rpn_inerente,
+    (r.rpn_residuo||0).toFixed(2), r.status, Math.round((r.confidence_score||0)*100)+'%'
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => '"' + String(c||'').replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'HERM_Risk_Register.csv';
+  a.click();
+  toast('CSV esportato!', 'success');
+}
+
+// ==================== EXPORT MARKDOWN ====================
+function exportMarkdown() {
+  if (!risks.length) { toast('Nessun rischio da esportare.', 'error'); return; }
+  let md = '# Registro Rischi HERM\n\n';
+  md += `**Data:** ${new Date().toLocaleDateString('it-IT')}\n`;
+  md += `**Totale scenari:** ${risks.length}\n`;
+  md += `**Approvati:** ${risks.filter(r=>r.status==='approved').length}\n\n`;
+  risks.forEach(r => {
+    md += `## ${r.id} — ${r.scenario}\n\n`;
+    md += `- **Categoria:** ${r.categoria_l1} / ${r.categoria_l2}\n`;
+    md += `- **Processo:** ${r.processo}\n`;
+    md += `- **Impatto Inerente:** ${r.impatto_inerente} | **Probabilità:** ${r.probabilita_inerente} | **RPN:** ${r.rpn_inerente}\n`;
+    md += `- **Stato:** ${r.status}\n\n`;
+    if (r.descrizione) md += `${r.descrizione}\n\n`;
+  });
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'HERM_Risk_Register.md';
+  a.click();
+  toast('Markdown esportato!', 'success');
+}
+
+// ==================== INIT ====================
+document.getElementById('workerUrl').value = localStorage.getItem(WORKER_URL_KEY) || '';
+// Load saved PAC area
+const savedArea = localStorage.getItem('herm_pac_area');
+if (savedArea) document.getElementById('pacArea').value = savedArea;
+</script>
+</body>
+</html>
