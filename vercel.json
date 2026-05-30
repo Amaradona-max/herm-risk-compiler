@@ -1,0 +1,16 @@
+{
+  "builds": [
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/export.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/export.py" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
