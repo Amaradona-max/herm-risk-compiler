@@ -1,6 +1,10 @@
-import json, shutil, re, copy, os, base64, tempfile
+from flask import Flask, request, jsonify, send_file
+import json, shutil, re, copy, os
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
+import tempfile
+
+app = Flask(__name__)
 
 TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), '..', 'TABELLA_RISCHIO_SECONDO_MODELLO_HERM__MO_3330_.xlsx')
 
@@ -22,121 +26,155 @@ CAT_L1 = {
     "Rischio Esterno": "Rischio Esterno", "Rischio Clinico Sanitario": "Rischio Clinico Sanitario",
 }
 
-def fc(c):
+
+def format_cause(c):
     if isinstance(c, dict):
         p = []
-        if c.get("processi"): p.append(f"Processi:\n{c['processi']}")
-        if c.get("persone"): p.append(f"Persone:\n{c['persone']}")
-        if c.get("fattori_esterni"): p.append(f"Fattori esterni:\n{c['fattori_esterni']}")
-        if c.get("strumenti"): p.append(f"Strumenti:\n{c['strumenti']}")
+        if c.get("processi"): p.append("Processi:\n" + c["processi"])
+        if c.get("persone"): p.append("Persone:\n" + c["persone"])
+        if c.get("fattori_esterni"): p.append("Fattori esterni:\n" + c["fattori_esterni"])
+        if c.get("strumenti"): p.append("Strumenti:\n" + c["strumenti"])
         return "\n\n".join(p)
     return str(c) if c else ""
 
-def fco(c):
+
+def format_consequence(c):
     if isinstance(c, dict):
         p = []
-        if c.get("economiche"): p.append(f"Economiche: {c['economiche']}")
-        if c.get("reputazionali"): p.append(f"Danno d'immagine: {c['reputazionali']}")
-        if c.get("compliance"): p.append(f"Compliance normativa: {c['compliance']}")
-        if c.get("salute_sicurezza"): p.append(f"Salute e sicurezza: {c['salute_sicurezza']}")
+        if c.get("economiche"): p.append("Economiche: " + c["economiche"])
+        if c.get("reputazionali"): p.append("Danno d'immagine: " + c["reputazionali"])
+        if c.get("compliance"): p.append("Compliance normativa: " + c["compliance"])
+        if c.get("salute_sicurezza"): p.append("Salute e sicurezza: " + c["salute_sicurezza"])
         else: p.append("Salute e sicurezza: -")
-        if c.get("gestionale_operativo"): p.append(f"Gestionale - Operativo: {c['gestionale_operativo']}")
-        if c.get("ambiente"): p.append(f"Ambiente: {c['ambiente']}")
+        if c.get("gestionale_operativo"): p.append("Gestionale - Operativo: " + c["gestionale_operativo"])
+        if c.get("ambiente"): p.append("Ambiente: " + c["ambiente"])
         return "\n\n".join(p)
     return str(c) if c else ""
 
-def cr(ws, tr, nr):
-    o = nr - tr
+
+def clone_row(ws, template_row, new_row):
+    offset = new_row - template_row
     for col in range(1, ws.max_column + 1):
-        s = ws.cell(row=tr, column=col)
-        t = ws.cell(row=nr, column=col)
-        if s.has_style:
-            t.font = copy.copy(s.font); t.fill = copy.copy(s.fill)
-            t.border = copy.copy(s.border); t.alignment = copy.copy(s.alignment)
-            t.number_format = s.number_format
-        if s.value is None: t.value = None
-        elif isinstance(s.value, str) and s.value.startswith("="):
-            t.value = re.sub(r'(?<!\$)([A-Z]+)(\d+)', lambda m: f"{m.group(1)}{int(m.group(2))+o}", s.value)
-        else: t.value = s.value
-    rd = ws.row_dimensions.get(tr)
-    if rd and rd.height: ws.row_dimensions[nr].height = rd.height
+        src = ws.cell(row=template_row, column=col)
+        tgt = ws.cell(row=new_row, column=col)
+        if src.has_style:
+            tgt.font = copy.copy(src.font)
+            tgt.fill = copy.copy(src.fill)
+            tgt.border = copy.copy(src.border)
+            tgt.alignment = copy.copy(src.alignment)
+            tgt.number_format = src.number_format
+        if src.value is None:
+            tgt.value = None
+        elif isinstance(src.value, str) and src.value.startswith("="):
+            tgt.value = re.sub(
+                r'(?<!\$)([A-Z]+)(\d+)',
+                lambda m: f"{m.group(1)}{int(m.group(2)) + offset}",
+                src.value
+            )
+        else:
+            tgt.value = src.value
+    rd = ws.row_dimensions.get(template_row)
+    if rd and rd.height:
+        ws.row_dimensions[new_row].height = rd.height
 
-def handler(request):
-    if request.method == 'OPTIONS':
-        return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type'}, 'body': ''}
-    if request.method != 'POST':
-        return {'statusCode': 405, 'body': 'Method not allowed'}
+
+@app.route("/api/export", methods=["POST", "OPTIONS"])
+def export_excel():
+    if request.method == "OPTIONS":
+        return "", 204
+
+    data = request.get_json()
+    scenari = data.get("risks", [])
+    pac = data.get("pacArea", "D")
+
+    if not scenari:
+        return jsonify({"error": "Nessun rischio"}), 400
+
     try:
-        body = json.loads(request.body)
-        scenari = body.get('risks', [])
-        pac = body.get('pacArea', 'D')
-        if not scenari:
-            return {'statusCode': 400, 'body': json.dumps({"error": "Nessun rischio"})}
+        tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
+        tmp_path = tmp.name
+        tmp.close()
 
-        tmp = '/tmp/output.xlsx'
-        shutil.copy2(TEMPLATE_PATH, tmp)
-        wb = load_workbook(tmp)
-        area = f"PAC AREA {pac} {AREA_NAMES.get(pac, '').upper()}"
+        shutil.copy2(TEMPLATE_PATH, tmp_path)
+        wb = load_workbook(tmp_path)
 
+        area_title = f"PAC AREA {pac} {AREA_NAMES.get(pac, '').upper()}"
+
+        # Update Copertina title
         if "Copertina" in wb.sheetnames:
-            ws_c = wb["Copertina"]
-            for r in range(1, ws_c.max_row + 1):
-                for c in range(1, ws_c.max_column + 1):
-                    v = ws_c.cell(row=r, column=c).value
+            ws_cop = wb["Copertina"]
+            for r in range(1, ws_cop.max_row + 1):
+                for c in range(1, ws_cop.max_column + 1):
+                    v = ws_cop.cell(row=r, column=c).value
                     if v and isinstance(v, str) and "RISK REGISTER" in v:
-                        ws_c.cell(row=r, column=c).value = f"RISK REGISTER - {area}"
+                        ws_cop.cell(row=r, column=c).value = f"RISK REGISTER - {area_title}"
 
+        # Update Registro dei Rischi title
         ws = wb["Registro dei Rischi"]
         for c in range(1, ws.max_column + 1):
             v = ws.cell(row=2, column=c).value
             if v and isinstance(v, str) and "RISK REGISTER" in v:
-                ws.cell(row=2, column=c).value = f"RISK REGISTER - {area}"
+                ws.cell(row=2, column=c).value = f"RISK REGISTER - {area_title}"
 
-        F = 7
+        FIRST_DATA_ROW = 7
         n = len(scenari)
-        re_ = ws.max_row - F + 1
-        if n > re_:
-            for i in range(re_, n): cr(ws, F, F + i)
+        existing_rows = ws.max_row - FIRST_DATA_ROW + 1
+        if n > existing_rows:
+            for i in range(existing_rows, n):
+                clone_row(ws, FIRST_DATA_ROW, FIRST_DATA_ROW + i)
 
-        for i, s in enumerate(scenari):
-            r = F + i
-            ws.cell(r, 3).value = i + 1
-            ws.cell(r, 5).value = s.get("direzione", "")
-            ws.cell(r, 6).value = s.get("risk_owner", "")
-            ws.cell(r, 7).value = s.get("processo", "")
-            ws.cell(r, 8).value = CAT_L1.get(s.get("categoria_l1", ""), s.get("categoria_l1", ""))
-            ws.cell(r, 9).value = s.get("categoria_l2", "")
-            ws.cell(r, 10).value = s.get("categoria_l3", "N.A.") or "N.A."
-            ws.cell(r, 11).value = s.get("scenario", "")
-            ws.cell(r, 12).value = fc(s.get("cause", {}))
-            ws.cell(r, 13).value = fco(s.get("conseguenze", {}))
-            ws.cell(r, 14).value = s.get("descrizione", "")
-            ws.cell(r, 15).value = s.get("impatto_economico")
-            ws.cell(r, 16).value = s.get("impatto_reputazionale")
-            ws.cell(r, 17).value = s.get("impatto_salute_sicurezza")
-            ws.cell(r, 18).value = s.get("impatto_compliance")
-            ws.cell(r, 19).value = s.get("impatto_gestionale_operativo")
-            ia = s.get("impatto_ambiente")
-            if ia is not None and ia != "": ws.cell(r, 20).value = ia
-            ws.cell(r, 22).value = s.get("probabilita_inerente")
-            ws.cell(r, 24).value = s.get("controlli_correttivi", "")
-            vi = s.get("valutazione_controlli_impatto", "")
-            for c in [25,26,27,28,29,30]: ws.cell(r, c).value = vi
-            ws.cell(r, 37).value = s.get("controlli_preventivi", "")
-            ws.cell(r, 38).value = s.get("valutazione_controlli_probabilita", "")
-            ws.cell(r, 49).value = s.get("azioni_mitigazione", "")
-            cf = s.get("confidence_score", 0.5)
-            ef = 2 if cf >= 0.7 else (1 if cf >= 0.4 else 0)
-            ws.cell(r, 50).value = ef
-            ws.cell(r, 52).value = ef
-            for c in [11,12,13,14,24,37,49]:
-                al = ws.cell(r, c).alignment
-                ws.cell(r, c).alignment = Alignment(wrap_text=True, vertical='top', horizontal=al.horizontal if al else 'left')
+        for idx, s in enumerate(scenari):
+            r = FIRST_DATA_ROW + idx
+            ws.cell(row=r, column=3).value = idx + 1
+            ws.cell(row=r, column=5).value = s.get("direzione", "")
+            ws.cell(row=r, column=6).value = s.get("risk_owner", "")
+            ws.cell(row=r, column=7).value = s.get("processo", "")
+            ws.cell(row=r, column=8).value = CAT_L1.get(s.get("categoria_l1", ""), s.get("categoria_l1", ""))
+            ws.cell(row=r, column=9).value = s.get("categoria_l2", "")
+            ws.cell(row=r, column=10).value = s.get("categoria_l3", "N.A.") or "N.A."
+            ws.cell(row=r, column=11).value = s.get("scenario", "")
+            ws.cell(row=r, column=12).value = format_cause(s.get("cause", {}))
+            ws.cell(row=r, column=13).value = format_consequence(s.get("conseguenze", {}))
+            ws.cell(row=r, column=14).value = s.get("descrizione", "")
+            ws.cell(row=r, column=15).value = s.get("impatto_economico")
+            ws.cell(row=r, column=16).value = s.get("impatto_reputazionale")
+            ws.cell(row=r, column=17).value = s.get("impatto_salute_sicurezza")
+            ws.cell(row=r, column=18).value = s.get("impatto_compliance")
+            ws.cell(row=r, column=19).value = s.get("impatto_gestionale_operativo")
+            imp_amb = s.get("impatto_ambiente")
+            if imp_amb is not None and imp_amb != "":
+                ws.cell(row=r, column=20).value = imp_amb
+            ws.cell(row=r, column=22).value = s.get("probabilita_inerente")
+            ws.cell(row=r, column=24).value = s.get("controlli_correttivi", "")
+            val_imp = s.get("valutazione_controlli_impatto", "")
+            for col in [25, 26, 27, 28, 29, 30]:
+                ws.cell(row=r, column=col).value = val_imp
+            ws.cell(row=r, column=37).value = s.get("controlli_preventivi", "")
+            ws.cell(row=r, column=38).value = s.get("valutazione_controlli_probabilita", "")
+            ws.cell(row=r, column=49).value = s.get("azioni_mitigazione", "")
+            conf = s.get("confidence_score", 0.5)
+            eff = 2 if conf >= 0.7 else (1 if conf >= 0.4 else 0)
+            ws.cell(row=r, column=50).value = eff
+            ws.cell(row=r, column=52).value = eff
+            # Set wrap text on long text columns
+            for col in [11, 12, 13, 14, 24, 37, 49]:
+                cell = ws.cell(row=r, column=col)
+                cell.alignment = Alignment(wrap_text=True, vertical='top')
 
-        wb.save(tmp)
-        with open(tmp, 'rb') as f: fd = f.read()
-        b64 = base64.b64encode(fd).decode()
-        fn = f"Risk_Register_PAC_Area_{pac}_{AREA_FILE.get(pac,'Unknown')}.xlsx"
-        return {'statusCode': 200, 'headers': {'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': f'attachment; filename="{fn}"', 'Access-Control-Allow-Origin': '*'}, 'body': b64, 'encoding': 'base64'}
+        wb.save(tmp_path)
+
+        filename = f"Risk_Register_PAC_Area_{pac}_{AREA_FILE.get(pac, 'Unknown')}.xlsx"
+        return send_file(
+            tmp_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
     except Exception as e:
-        return {'statusCode': 500, 'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}, 'body': json.dumps({"error": str(e)})}
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/health")
+def health():
+    return jsonify({"status": "ok"})
