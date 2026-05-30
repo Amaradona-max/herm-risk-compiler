@@ -12,12 +12,5 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/export.py" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "include": [
-    "index.html",
-    "api/export.py",
-    "requirements.txt",
-    "TABELLA_RISCHIO_SECONDO_MODELLO_HERM__MO_3330_.xlsx",
-    "Risk_Register_PAC_Area_D_Immobilizzazioni.xlsx"
   ]
 }

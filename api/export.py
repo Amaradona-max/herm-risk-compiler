@@ -6,7 +6,7 @@ import tempfile
 
 app = Flask(__name__)
 
-TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), '..', 'TABELLA_RISCHIO_SECONDO_MODELLO_HERM__MO_3330_.xlsx')
+TEMPLATE_PATH = os.path.join(os.path.dirname(__file__), 'TABELLA_RISCHIO_SECONDO_MODELLO_HERM__MO_3330_.xlsx')
 
 AREA_NAMES = {
     'A': 'Requisiti Generali', 'B': 'Personale', 'C': 'Acquisti',
